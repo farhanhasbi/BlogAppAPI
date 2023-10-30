@@ -61,8 +61,6 @@ blogRouter.get(
           totalPages,
         },
       };
-
-      console.log("Success Fetching Blog");
       return res.status(200).json(response);
     } catch (error) {
       console.error("Error Fetching Blog", error);

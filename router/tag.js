@@ -46,8 +46,6 @@ tagRouter.get(
           totalPages,
         },
       };
-
-      console.log("Success Fetching Data");
       return res.status(200).json(response);
     } catch (error) {
       console.error("Error Fetching Data", error);
@@ -71,11 +69,9 @@ tagRouter.post(
     try {
       const { name } = req.body;
       const newTag = await Tag.create({ name });
-
-      console.log("Success Adding Tag");
       return res.status(201).json(newTag);
     } catch (error) {
-      console.log("Error Adding Tag:", error);
+      console.error("Error Adding Tag:", error);
       return res.status(500).json({ error: "Internal Server Error" });
     }
   }
@@ -105,11 +101,10 @@ tagRouter.put(
       if (numUpdated === 0) {
         res.status(404).json({ error: "Tag not found" });
       } else {
-        console.log("Success Updating Tag");
         res.status(200).json(updateTag[0]);
       }
     } catch (error) {
-      console.error("Error Updating Tag");
+      console.error("Error Updating Tag", error);
       return res.status(500).json({ error: "Internal Server Error" });
     }
   }
@@ -136,10 +131,9 @@ tagRouter.delete(
         res.status(404).json({ error: "Tag Not Found" });
       } else {
         res.status(200).json({ message: "Success Deleting Tag" });
-        console.log("Success Deleting Tag");
       }
     } catch (error) {
-      console.error("Error Deleting Tag");
+      console.error("Error Deleting Tag", error);
       return res.status(500).json({ error: "Internal Server Error" });
     }
   }

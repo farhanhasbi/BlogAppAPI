@@ -25,10 +25,9 @@ authRouter.post("/register", async (req, res) => {
       password: hashedPassword,
       role: userModerator ? "user" : "moderator",
     });
-    console.log("Register success");
     res.status(201).json({ newUser });
   } catch (error) {
-    console.error("Register failed");
+    console.error("Register failed", error);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 });
@@ -39,10 +38,9 @@ authRouter.post(
   passport.authenticate("basic", { session: false }),
   (req, res) => {
     try {
-      console.log("Login success");
       return res.status(200).json(req.user);
     } catch (error) {
-      console.error("Login failed");
+      console.error("Login failed", error);
       return res.status(500).json({ error: "Internal Server Error" });
     }
   }
@@ -83,7 +81,6 @@ authRouter.put(
       if (numUpdate === 0) {
         res.status(404).json({ error: "User Not Found" });
       } else {
-        console.log("Success assign user to staff");
         return res.status(200).json(updateUserRole[0]);
       }
     } catch (error) {
@@ -111,8 +108,6 @@ authRouter.put(
           .json({ error: "Unauthorized: You can only edit your own profile" });
       }
 
-      console.log(userId);
-
       const [numUpdated, updateUser] = await User.update(
         {
           username,
@@ -124,10 +119,9 @@ authRouter.put(
         res.status(404).json({ error: "Item not found" });
       } else {
         res.status(200).json(updateUser[0]);
-        console.log("Success editing user");
       }
     } catch (error) {
-      console.error("Error editing user");
+      console.error("Error editing user", error);
       res.status(500).json({ error: "Internal Server Error" });
     }
   }
@@ -152,10 +146,9 @@ authRouter.delete(
         res.status(404).json({ error: "User Not Found" });
       } else {
         res.status(200).json({ message: "Success deleting data" });
-        console.log("Success deleting user");
       }
     } catch (error) {
-      console.error("Error deleting user");
+      console.error("Error deleting user", error);
       return res.status(500).json({ error: "Internal Server Error" });
     }
   }
@@ -204,19 +197,12 @@ authRouter.get(
           totalPages,
         },
       };
-
-      console.log("Success Fetching Data");
       return res.status(200).json(response);
     } catch (error) {
-      console.log("Error Fetching Data", error);
+      console.error("Error Fetching Data", error);
       return res.status(500).json({ error: "Internal Server Error" });
     }
   }
 );
 
 module.exports = authRouter;
-
-// Shen - moderator | artofthief12
-// Ryuma - author | wolffang22
-// Vienna - user | whitelotus20
-// Jaya12 - user | jayajayajaya
