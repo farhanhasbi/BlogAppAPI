@@ -1,13 +1,43 @@
 const express = require("express");
 const passport = require("passport");
 const bcrypt = require("bcrypt");
+const multer = require("multer");
+const { v4 } = require("uuid");
 const { User } = require("../config/db-config.js");
 const authRouter = express.Router();
 const filter = require("../component/filter.js");
 
+// Set up multer to handle upload files
+const DIR = "./public/";
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, DIR);
+  },
+  filename: (req, file, cb) => {
+    const fileName = file.originalname.toLowerCase().split(" ").join("-");
+    cb(null, v4() + "-" + fileName);
+  },
+});
+const upload = multer({
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    if (
+      file.mimetype == "image/png" ||
+      file.mimetype == "image/jpg" ||
+      file.mimetype == "image/jpeg"
+    ) {
+      cb(null, true);
+    } else {
+      cb(null, false);
+      return cb(new Error("Only .png, .jpg and .jpeg format allowed!"));
+    }
+  },
+});
+
 // Register User
 authRouter.post("/register", async (req, res) => {
   const { username, password } = req.body;
+  const url = req.protocol + "://" + req.get("host");
   try {
     // Check if the username already exists
     const existingUser = await User.findOne({
@@ -24,6 +54,7 @@ authRouter.post("/register", async (req, res) => {
       username,
       password: hashedPassword,
       role: userModerator ? "user" : "moderator",
+      picture: url + "/public/" + req.file.filename,
     });
     res.status(201).json({ newUser });
   } catch (error) {
@@ -98,8 +129,7 @@ authRouter.put(
     const { username, password } = req.body;
     const id = parseInt(req.params.id, 10);
     const userId = req.user.id;
-
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const url = req.protocol + "://" + req.get("host");
 
     try {
       if (userId !== id) {
@@ -108,17 +138,36 @@ authRouter.put(
           .json({ error: "Unauthorized: You can only edit your own profile" });
       }
 
-      const [numUpdated, updateUser] = await User.update(
-        {
-          username,
-          password: hashedPassword,
-        },
-        { where: { id }, returning: true }
-      );
-      if (numUpdated === 0) {
-        res.status(404).json({ error: "Item not found" });
+      if (password) {
+        // Hash the new password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        await User.update(
+          {
+            username,
+            password: hashedPassword,
+            picture: url + "/public/" + req.file.filename,
+          },
+          { where: { id } }
+        );
       } else {
-        res.status(200).json(updateUser[0]);
+        // If no new password provided, update only username and picture
+        await User.update(
+          {
+            username,
+            picture: url + "/public/" + req.file.filename,
+          },
+          { where: { id } }
+        );
+      }
+
+      const updatedUser = await User.findByPk(id);
+
+      if (!updatedUser) {
+        res.status(404).json({ error: "User not found" });
+      } else {
+        res.status(200).json(updatedUser);
+        console.log("Success editing user");
       }
     } catch (error) {
       console.error("Error editing user", error);

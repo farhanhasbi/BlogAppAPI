@@ -39,6 +39,10 @@ const User = sequelize.define("User", {
     type: DataTypes.ENUM("moderator", "author", "user"),
     allowNull: false,
   },
+  picture: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
 });
 
 const Tag = sequelize.define("Tag", {
