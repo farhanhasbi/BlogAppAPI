@@ -8,25 +8,45 @@ const {
   BlogVote,
   Comment,
   Reply,
-  sequelize,
 } = require("../config/db-config.js");
 const blogRouter = express.Router();
 const filter = require("../component/filter.js");
-const {
-  serializeBlog,
-  serializeBlogDetail,
-  serializeComment,
-} = require("../component/order.js");
+const { serializeBlog, serializeBlogDetail } = require("../component/order.js");
+const redisClient = require("../config/redis.js");
+
+const checkCache = async (req, res, next) => {
+  try {
+    const key = req.originalUrl;
+
+    // Attempt to retrieve data from Redis
+    const value = await redisClient.get(key);
+
+    if (value) {
+      // Cache hit
+      const results = JSON.parse(value);
+      return res.send(results);
+    } else {
+      // Cache miss
+      next();
+    }
+  } catch (error) {
+    // Handle Redis-related errors
+    console.error("Error in checkCache middleware:", error);
+    return res.status(500).send("Internal Server Error");
+  }
+};
 
 // List Blog
 blogRouter.get(
   "/list",
   passport.authenticate("basic", { session: false }),
+  checkCache,
   async (req, res) => {
     try {
       const { title, page = 1, pageSize = 10 } = req.query;
       const offset = (page - 1) * pageSize;
       const whereCondition = {};
+      const key = req.originalUrl;
 
       filter.searchTitleBlog(whereCondition, title);
 
@@ -61,6 +81,9 @@ blogRouter.get(
           totalPages,
         },
       };
+
+      redisClient.setEx(key, 1800, JSON.stringify(response)); // store cache data for 30 minutes.
+
       return res.status(200).json(response);
     } catch (error) {
       console.error("Error Fetching Blog", error);

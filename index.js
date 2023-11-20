@@ -9,6 +9,7 @@ const passport = require("./config/passport.js");
 const authRouter = require("./router/auth.js");
 const blogRouter = require("./router/blog.js");
 const tagRouter = require("./router/tag.js");
+const redisClient = require("./config/redis.js");
 
 app.use(cors());
 
@@ -36,4 +37,5 @@ app.use("/tag", tagRouter);
 
 app.listen(port, () => {
   console.log(`Port is listening on ${port}`);
+  redisClient.connect();
 });
