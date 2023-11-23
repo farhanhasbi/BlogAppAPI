@@ -10,12 +10,20 @@ const authRouter = require("./router/auth.js");
 const blogRouter = require("./router/blog.js");
 const tagRouter = require("./router/tag.js");
 const redisClient = require("./config/redis.js");
+const RedisStore = require("connect-redis").default;
 
 app.use(cors());
+
+let redisStore = new RedisStore({
+  client: redisClient,
+  ttl: 86400,
+  prefix: "user-session",
+});
 
 // Session and Passport Middleware
 app.use(
   session({
+    store: redisStore,
     secret: "your-secret-key",
     resave: false,
     saveUninitialized: false,
