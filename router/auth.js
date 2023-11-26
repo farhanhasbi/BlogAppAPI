@@ -81,6 +81,11 @@ authRouter.post(
   passport.authenticate("basic", { session: false }),
   (req, res) => {
     try {
+      if (req.session.user) {
+        return res.status(403).json({
+          error: `Already logged in with username ${req.session.user.username}`,
+        });
+      }
       req.session.user = req.user;
       return res.status(200).json({ message: "Login successful" });
     } catch (error) {
