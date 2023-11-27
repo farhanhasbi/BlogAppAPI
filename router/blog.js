@@ -100,18 +100,37 @@ blogRouter.get("/detail/:id", isAuthenticated, async (req, res) => {
 blogRouter.post("/post", workerAccess, async (req, res) => {
   try {
     const { title, content, tags } = req.body;
+    const authorId = req.session.user.id;
+    const author = await User.findByPk(authorId);
+
+    if (!author) {
+      return res.status(404).json({ error: "Author not found" });
+    }
 
     const newBlog = await Blog.create({
       title,
       content,
-      authorId: req.session.user.id,
+      authorId,
       like: 0,
       dislike: 0,
     });
 
     const tagInstances = await Tag.findAll({ where: { name: tags } });
-
     const blogInstance = await newBlog.addTags(tagInstances);
+
+    const newBlogData = serializeBlog(newBlog, author.username);
+
+    const key = "/blog/list";
+    const existingCache = await redisClient.get(key);
+
+    let existingData;
+    if (existingCache) {
+      existingData = JSON.parse(existingCache);
+    }
+
+    existingData.blog.push(newBlogData);
+
+    redisClient.setEx(key, 1800, JSON.stringify(existingData));
 
     return res.status(201).json(blogInstance);
   } catch (error) {
@@ -172,6 +191,21 @@ blogRouter.patch("/edit/:id", workerAccess, async (req, res) => {
       await updatedBlog.setTags(tagInstances);
     }
 
+    // Update the Redis cache for the /blog/list endpoint
+    const key = "/blog/list";
+    const existingCache = await redisClient.get(key);
+
+    if (existingCache) {
+      const parsedCache = JSON.parse(existingCache);
+      const updatedIndex = parsedCache.blog.findIndex((blog) => blog.id === id);
+
+      if (updatedIndex !== -1) {
+        parsedCache.blog[updatedIndex] = serializeBlog(updatedBlog);
+        // Update the cache with the modified data
+        await redisClient.setEx(key, 1800, JSON.stringify(parsedCache));
+      }
+    }
+
     // Send the updated blog as the JSON response
     return res.status(200).json(updatedBlog);
   } catch (error) {
@@ -212,6 +246,21 @@ blogRouter.delete("/delete/:id", workerAccess, async (req, res) => {
     });
 
     if (deleteBlog > 0) {
+      // Update the Redis cache for the /blog/list endpoint
+      const key = "/blog/list";
+      const existingCache = await redisClient.get(key);
+
+      if (existingCache) {
+        const parsedCache = JSON.parse(existingCache);
+        const deletedIndex = parsedCache.blog.findIndex(
+          (blog) => blog.id === id
+        );
+
+        if (deletedIndex !== -1) {
+          parsedCache.blog.splice(deletedIndex, 1);
+          await redisClient.setEx(key, 1800, JSON.stringify(parsedCache));
+        }
+      }
       return res.status(200).json({
         message: "Blog and associated Tags deleted successfully",
       });
